@@ -42,32 +42,35 @@
    async function calcularImposto() {
      const valor = document.getElementById("valor").value;
      const regime = document.querySelector('input[name="regime"]:checked').value;
+
      if (!valor) {
        alert("Por favor, insira um valor!");
        return;
      }
+
+     // Converte o regime para os valores esperados pela API
+     let sn = 0, lp = 0, lr = 0;
+     if (regime === "simples") sn = 1;
+     if (regime === "presumido") lp = 1;
+     if (regime === "real") lr = 1;
+
+     // Monta a URL com os parâmetros
+     const url = `https://kaiunq6fljuycsi4azptwlwqta0jddoo.lambda-url.us-east-1.on.aws/?sn=${sn}&lp=${lp}&lr=${lr}&val=${valor}`;
+     
      try {
-       const resposta = await fetch("https://COLE_SEU_ENDPOINT_AQUI.amazonaws.com/default/calculoImposto", {
-         method: "POST",
-         headers: {
-           "Content-Type": "application/json"
-         },
-         body: JSON.stringify({ valor: parseFloat(valor), regime: regime })
-       });
+       const resposta = await fetch(url, { method: "GET" });
+       
        if (!resposta.ok) {
          throw new Error("Erro ao acessar o servidor: " + resposta.status);
-       }
+        }
+        
+
        const dados = await resposta.json();
-       // Verifica se os campos esperados estão no retorno
-       if (!dados.valor_original) {
-         document.getElementById("resultado").innerText = "❌ Erro: retorno inválido da API.";
-         return;
-       }
-       document.getElementById("resultado").innerText =
-         `Regime: ${dados.regime.charAt(0).toUpperCase() + dados.regime.slice(1)}\n` +
-         `Valor Original: R$ ${dados.valor_original.toFixed(2)}\n` +
-         `Imposto (${(dados.taxa*100).toFixed(0)}%): R$ ${dados.imposto.toFixed(2)}\n` +
-         `Total com Imposto: R$ ${dados.total_com_imposto.toFixed(2)}`;
+        
+
+       document.getElementById("resultado").innerText = dados.response;
+        
+
      } catch (erro) {
        document.getElementById("resultado").innerText = "❌ Erro ao calcular imposto.\n" + erro.message;
        console.error(erro);
