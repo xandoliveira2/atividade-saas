@@ -1,81 +1,142 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Microserviço AWS - Cálculo de Imposto</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Microserviço AWS - Cálculo Tributário</title>
 </head>
-<body style="font-family: Arial, sans-serif; background: #8397ac; display: flex; justify-content: center; align-items: center; height: 100vh;">
-<div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 350px;">
-<h2 style="text-align:center; color:#155786;"> Cálculo de Imposto</h2>
-<label for="valor" style="font-weight:bold;">Digite o valor:</label>
-<input type="number" id="valor" placeholder="Ex: 100"
-          style="width:100%; padding:10px; margin-top:8px; border:1px solid #777474; border-radius:6px;">
-<p style="font-weight:bold; margin-top:15px;">Escolha o regime tributário:</p>
-<div style="margin-top:8px; margin-bottom:10px;">
-<label><input type="radio" name="regime" value="simples" checked> Simples Nacional (6%)</label><br>
-<label><input type="radio" name="regime" value="presumido"> Lucro Presumido (12%)</label><br>
-<label><input type="radio" name="regime" value="real"> Lucro Real (15%)</label>
-</div>
-<button onclick="calcularImposto()" style="
-     margin-top:15px;
-     background:#28a745;
-     color:white;
-     padding:10px 15px;
-     border:none;
-     border-radius:6px;
-     cursor:pointer;
-     width:100%;
-     font-weight:bold;
-   ">Calcular</button>
-<pre id="resultado" style="
-     background:#e9ecef;
-     border-radius:6px;
-     padding:10px;
-     margin-top:20px;
-     color:#333;
-     font-size:14px;
-     white-space: pre-wrap;
-   ">O resultado aparecerá aqui...</pre>
-</div>
-<script>
-   async function calcularImposto() {
-     const valor = document.getElementById("valor").value;
-     const regime = document.querySelector('input[name="regime"]:checked').value;
 
-     if (!valor) {
-       alert("Por favor, insira um valor!");
-       return;
-     }
+<body
+  style="font-family: Arial, sans-serif; background: #8397ac; display: flex; justify-content: center; align-items: center; height: 100vh;">
+  <div
+    style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 380px;">
 
-     // Converte o regime para os valores esperados pela API
-     let sn = 0, lp = 0, lr = 0;
-     if (regime === "simples") sn = 1;
-     if (regime === "presumido") lp = 1;
-     if (regime === "real") lr = 1;
+    <h2 style="text-align:center; color:#155786;">Cálculos Tributários</h2>
 
-     // Monta a URL com os parâmetros
-     const url = `https://kaiunq6fljuycsi4azptwlwqta0jddoo.lambda-url.us-east-1.on.aws/?sn=${sn}&lp=${lp}&lr=${lr}&val=${valor}`;
-     
-     try {
-       const resposta = await fetch(url, { method: "GET" });
-       
-       if (!resposta.ok) {
-         throw new Error("Erro ao acessar o servidor: " + resposta.status);
-        }
-        
+    <!-- Tipo de cálculo -->
+    <p style="font-weight:bold; margin-top:10px;">Escolha o tipo de cálculo:</p>
+    <div style="margin-top:5px; margin-bottom:15px;">
+      <label><input type="radio" name="tipo" value="imposto" checked onchange="atualizarLabel()"> Calcular Valor do
+        Imposto</label><br>
+      <label><input type="radio" name="tipo" value="venda" onchange="atualizarLabel()"> Calcular Preço de Venda</label>
+    </div>
 
-       const dados = await resposta.json();
-        
+    <!-- Campo valor -->
+    <label id="labelValor" for="valor" style="font-weight:bold;">Valor Final do Produto:</label>
+    <input type="number" id="valor" placeholder="Ex: 100"
+      style="width:100%; padding:10px; margin-top:8px; border:1px solid #777474; border-radius:6px;">
 
-       document.getElementById("resultado").innerText = dados.response;
-        
+    <!-- CAMPO DE LUCRO (NOVO) -->
+    <div id="campoLucro" style="display:none; margin-top:10px;">
+      <label style="font-weight:bold;">Percentual de lucro desejado (%)</label>
+      <input id="lucro" type="number" placeholder="Ex: 30"
+        style="width:100%; padding:10px; margin-top:5px; border:1px solid #777474; border-radius:6px;">
+    </div>
 
-     } catch (erro) {
-       document.getElementById("resultado").innerText = "❌ Erro ao calcular imposto.\n" + erro.message;
-       console.error(erro);
-     }
-   }
-</script>
+    <!-- Regime tributário -->
+    <p style="font-weight:bold; margin-top:15px;">Regime Tributário:</p>
+    <div style="margin-top:8px; margin-bottom:10px;">
+      <label><input type="radio" name="regime" value="simples" checked onchange="mostrarCampos()"> Simples
+        Nacional</label><br>
+      <label><input type="radio" name="regime" value="presumido" onchange="mostrarCampos()"> Lucro Presumido</label><br>
+      <label><input type="radio" name="regime" value="real" onchange="mostrarCampos()"> Lucro Real</label>
+    </div>
+
+    <!-- Área dinâmica dos percentuais -->
+    <div id="camposSimples" style="display:block;">
+      <label style="font-weight:bold;">Percentual (%)</label>
+      <input id="percSimples" type="number" placeholder="Ex: 6"
+        style="width:100%; padding:10px; margin-top:5px; border:1px solid #777474; border-radius:6px;">
+    </div>
+
+    <div id="camposDetalhados" style="display:none; margin-top:10px;">
+      <label style="font-weight:bold;">ICMS (%)</label>
+      <input id="icms" type="number" placeholder="Ex: 12"
+        style="width:100%; padding:10px; margin-top:5px; border:1px solid #777474; border-radius:6px;">
+
+      <label style="font-weight:bold; margin-top:10px;">PIS (%)</label>
+      <input id="pis" type="number" placeholder="Ex: 1.65"
+        style="width:100%; padding:10px; margin-top:5px; border:1px solid #777474; border-radius:6px;">
+
+      <label style="font-weight:bold; margin-top:10px;">COFINS (%)</label>
+      <input id="cofins" type="number" placeholder="Ex: 7.6"
+        style="width:100%; padding:10px; margin-top:5px; border:1px solid #777474; border-radius:6px;">
+    </div>
+
+    <button onclick="calcular()"
+      style="margin-top:20px; background:#28a745; color:white; padding:10px 15px; border:none; border-radius:6px; cursor:pointer; width:100%; font-weight:bold;">
+      Calcular
+    </button>
+
+    <pre id="resultado"
+      style="background:#e9ecef; border-radius:6px; padding:10px; margin-top:20px; color:#333; font-size:14px; white-space: pre-wrap;">
+O resultado aparecerá aqui...
+</pre>
+
+  </div>
+
+  <script>
+    function atualizarLabel() {
+      const tipo = document.querySelector('input[name="tipo"]:checked').value;
+      const label = document.getElementById("labelValor");
+
+      if (tipo === "imposto") {
+        label.innerText = "Valor Final do Produto:";
+        document.getElementById("campoLucro").style.display = "none";
+      } else {
+        label.innerText = "Custo Total:";
+        document.getElementById("campoLucro").style.display = "block";
+      }
+    }
+
+    function mostrarCampos() {
+      const regime = document.querySelector('input[name="regime"]:checked').value;
+
+      document.getElementById("camposSimples").style.display = regime === "simples" ? "block" : "none";
+      document.getElementById("camposDetalhados").style.display = regime === "simples" ? "none" : "block";
+    }
+
+    async function calcular() {
+      const tipo = document.querySelector('input[name="tipo"]:checked').value;
+      const regime = document.querySelector('input[name="regime"]:checked').value;
+      const valor = parseFloat(document.getElementById("valor").value) || 0;
+      const simples = parseFloat(document.getElementById("percSimples").value) || 0;
+      const icms = parseFloat(document.getElementById("icms").value) || 0;
+      const pis = parseFloat(document.getElementById("pis").value) || 0;
+      const cofins = parseFloat(document.getElementById("cofins").value) || 0;
+      const lucro = parseFloat(document.getElementById("lucro").value) || 0;
+
+      const payload = {
+        tipo,
+        regime,
+        valor,
+        icms,
+        pis,
+        cofins,
+        simples,
+        lucro
+      };
+
+      try {
+        const response = await fetch("https://kaiunq6fljuycsi4azptwlwqta0jddoo.lambda-url.us-east-1.on.aws/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        console.log(data);
+        document.getElementById("resultado").innerText = data.response;
+
+      } catch (err) {
+        console.error("Erro:", err);
+      }
+    }
+  </script>
+
 </body>
+
 </html>
