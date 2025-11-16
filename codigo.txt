@@ -1,0 +1,76 @@
+import json
+
+def lambda_handler(event, context):
+
+    method = event.get("requestContext", {}).get("http", {}).get("method", "")
+
+    # ====== TRATAR OPTIONS (CORS) ======
+    if method == "OPTIONS":
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "*",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
+            },
+            "body": ""
+        }
+    # ===================================
+
+    try:
+        body = json.loads(event["body"])
+
+        tipo = body.get("tipo")
+        regime = body.get("regime")
+        valor = float(body.get("valor"))
+        simples = float(body.get("simples")) / 100
+        icms = float(body.get("icms")) / 100
+        pis = float(body.get("pis")) / 100
+        cofins = float(body.get("cofins")) / 100
+        lucro = float(body.get("lucro")) / 100
+
+        retornoFuncao = ""
+
+        if regime == 'simples':
+            if tipo == 'venda':
+                retornoFuncao = "O valor do produto deve ser de R$" + str(valor / (1 - lucro - simples))
+            elif tipo == 'imposto':
+                retornoFuncao = "O valor de imposto nesse produto é de R$" + str(valor * simples)
+            else:
+                retornoFuncao = "Tipo inválido"
+
+        elif regime in ('presumido', 'real'):
+            if tipo == 'venda':
+                retornoFuncao = "Para esse produto você deve vender à R$" + str( valor / ( 1 - lucro - icms - cofins - pis) ) 
+            elif tipo == 'imposto':
+                valorIcms = valor * icms
+                valorTotalSemIcms = valor - valorIcms
+                valorCofins = valorTotalSemIcms * cofins
+                valorPis = valorTotalSemIcms * pis
+                retornoFuncao = f"Para esse produto, você está pagando de imposto : \n ICMS -> R${valorIcms} .\n COFINS -> R${valorCofins} .\n PIS -> R${valorPis} ."
+            else:
+                retornoFuncao = "Tipo inválido"
+
+        else:
+            retornoFuncao  = "Regime inválido"
+
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+            },
+            'body': json.dumps({'response': retornoFuncao})
+        }
+
+    except Exception as ex:
+        return {
+            'statusCode': 400,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+            },
+            'body': json.dumps({'error': str(ex)})
+        }
